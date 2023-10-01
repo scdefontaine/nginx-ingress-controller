@@ -1,0 +1,41 @@
+stages:
+  - deploy
+  - cleanup
+
+.variables: &variables
+  NAMESPACE: ingress
+  CLUSTER_DOMAIN: $CLUSTER_DOMAIN
+
+.deploy: &deploy
+  image: alpine/helm
+  tags:
+    - gitlab-runner
+  only:
+    - main
+
+deploy:
+  <<: *deploy
+  stage: deploy
+  allow_failure: false
+  when: manual
+  environment:
+    name: production
+    # url: https://$APP_HOST
+    on_stop: stop
+  variables:
+    <<: *variables
+    APP: $CI_PROJECT_NAME
+    # APP_HOST: $CI_PROJECT_NAME.$CLUSTER_DOMAIN
+  script:
+    - helm upgrade -i $APP ./helm -n $NAMESPACE
+  
+
+stop:
+  <<: *deploy
+  stage: cleanup
+  when: manual
+  environment:
+    name: production
+    action: stop
+  script:
+    - helm -n $NAMESPACE uninstall $APP
